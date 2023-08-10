@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --time=00-0:20:00
 #SBATCH --nice=2000
-#SBATCH --out=atals2FS_%A.log
+#SBATCH --out=atlas2FS_%A.log
 
 # usage instructions
 Usage() {
