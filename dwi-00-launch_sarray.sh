@@ -24,7 +24,7 @@ cd ${bidsdir}
 ls -d sub-*/ | sed 's:/.*::' > subjects.txt
 nsubj=$(ls -d sub-*/ | wc -l)
 
-# launch pipeline
+# launch pipeline slurm array
 sbatch --array="1-${nsubj}%${simul}" ${scriptdir}/dwi-01-pipeline_sarray.sh \
  -i ${bidsdir} \
  -o ${outputdir} -w ${workdir} \

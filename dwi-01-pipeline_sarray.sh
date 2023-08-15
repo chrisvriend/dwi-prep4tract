@@ -4,7 +4,7 @@
 # (C) C. Vriend - Aumc ANW/Psy - June '23
 # c.vriend@amsterdamumc.nl
 
-# pipeline using slurm arrays to process multiple subjects in parallel (called by dwi-00-launch_sarray.sh )
+# dwi preprocessing and tractography pipeline using slurm arrays to process multiple subjects in parallel (called by dwi-00-launch_sarray.sh )
 
 #################
 # tree of outputs
@@ -247,4 +247,6 @@ sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" dwi-tck2conn*.log > ${outpu
 ##   DWI-AUTOTRACT    ##
 ###########################
 
-rm ${bidsdir}/${subj}/*.log
+# pending 
+
+#rm ${bidsdir}/${subj}/*.log
