@@ -4,6 +4,9 @@
 # (C) C. Vriend - Aumc ANW/Psy - June '23
 # c.vriend@amsterdamumc.nl
 
+# dwi preprocessing and tractography pipeline using slurm to process one subjects (called by dwi-00-launch.sh )
+
+
 #################
 # tree of outputs
 #################
