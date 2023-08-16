@@ -1,15 +1,15 @@
 #!/bin/bash
 
 #SBATCH --job-name=tck2conn
-#SBATCH --mem=16G
+#SBATCH --mem=2G
 #SBATCH --partition=luna-cpu-short
 #SBATCH --qos=anw-cpu
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=2
 #SBATCH --time=00-00:45:00
 #SBATCH --nice=2000
 #SBATCH --output=dwi-tck2conn_%A.log
 
-threads=16
+threads=2
 
 Usage() {
 	cat <<EOF
