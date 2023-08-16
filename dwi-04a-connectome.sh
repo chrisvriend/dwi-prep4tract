@@ -34,6 +34,7 @@ bidsdir=""
 outputdir=""
 workdir=""
 subj=""
+scriptdir=""
 # input variables
 # Parse command line arguments
 while getopts ":i:o:w:s:c:" opt; do
@@ -112,8 +113,9 @@ for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
   ##---------------------------------##
 
   mkdir -p "${workdir}/${subj}/${sessionpath}dwi"
+  mkdir -p "${outputdir}/dwi-connectome/${subj}/logs"
 
-  for folder in dwi figures logs; do
+  for folder in dwi figures; do
     mkdir -p "${outputdir}/dwi-connectome/${subj}${sessionpath}/${folder}"
   done
 

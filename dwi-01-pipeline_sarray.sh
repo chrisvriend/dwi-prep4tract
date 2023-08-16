@@ -240,7 +240,7 @@ cd ${bidsdir}/${subj}
 echo
 echo -e "${BLUE}dwi fod + tractogram${NC}"
 echo
-sbatch --wait ${scriptdir}/dwi-04a-connectome.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -s ${subj}
+sbatch --wait ${scriptdir}/dwi-04a-connectome.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -s ${subj} -c ${scriptdir}
 sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" dwi-tck2conn*.log > ${outputdir}/dwi-connectome/${subj}/logs/${subj}_dwi-tckconn.log
 
 ###########################
