@@ -71,6 +71,7 @@ for dwidir in ${outputdir}/dwi-preproc/${subj}/{,ses*/}dwi; do
     else
         sessionpath=/${session}/
         sessionfile=_${session}_
+        sessionID=-${session}
 
     fi
 
@@ -108,20 +109,20 @@ for dwidir in ${outputdir}/dwi-preproc/${subj}/{,ses*/}dwi; do
 
         # transfer and rename files to NODDI compatible filenames
 
-        mkdir -p ${workdir}/${subj}${sessionpath}noddi/${subj}-${session}
+        mkdir -p ${workdir}/${subj}${sessionpath}noddi/${subj}${sessionID}
         cp ${subj}${sessionfile}space-dwi_desc-brain_mask.nii.gz \
-            ${workdir}/${subj}${sessionpath}noddi/${subj}-${session}/nodif_brain_mask.nii.gz
+            ${workdir}/${subj}${sessionpath}noddi/${subj}${sessionID}/nodif_brain_mask.nii.gz
         cp ${subj}${sessionfile}space-dwi_desc-preproc_dwi.nii.gz \
-            ${workdir}/${subj}${sessionpath}noddi/${subj}-${session}/data.nii.gz
+            ${workdir}/${subj}${sessionpath}noddi/${subj}${sessionID}/data.nii.gz
         cp ${subj}${sessionfile}space-dwi_desc-preproc_dwi.bvec \
-            ${workdir}/${subj}${sessionpath}noddi/${subj}-${session}/bvecs
+            ${workdir}/${subj}${sessionpath}noddi/${subj}${sessionID}/bvecs
         cp ${subj}${sessionfile}space-dwi_desc-preproc_dwi.bval \
-            ${workdir}/${subj}${sessionpath}noddi/${subj}-${session}/bvals
+            ${workdir}/${subj}${sessionpath}noddi/${subj}${sessionID}/bvals
 
         cd ${workdir}/${subj}${sessionpath}noddi
-        sbatch --wait --gres=gpu:1g.10gb:1 ${scriptdir}/dwi-02d-noddi.sh ${subj}-${session}
+        sbatch --wait --gres=gpu:1g.10gb:1 ${scriptdir}/dwi-02d-noddi.sh ${subj}${sessionID}
 
-        if [ -f ${subj}-${session}.NODDI_Watson/mean_fiso.nii.gz ]; then
+        if [ -f ${subj}${sessionID}.NODDI_Watson/mean_fiso.nii.gz ]; then
             # rename and move output from NODDI
 
             #ICVF is the intracellular volume fraction (also known as NDI),
@@ -129,11 +130,11 @@ for dwidir in ${outputdir}/dwi-preproc/${subj}/{,ses*/}dwi; do
             #and ISOVF is the isotropic component volume fraction (also known as IVF)
             # ndi, isovf, odi
 
-            mv ${subj}-${session}.NODDI_Watson/OD.nii.gz \
+            mv ${subj}${sessionID}.NODDI_Watson/OD.nii.gz \
                 ${workdir}/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-odi_noddi.nii.gz
-            mv ${subj}-${session}.NODDI_Watson/mean_fintra.nii.gz \
+            mv ${subj}${sessionID}.NODDI_Watson/mean_fintra.nii.gz \
                 ${workdir}/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-ndi_noddi.nii.gz
-            mv ${subj}-${session}.NODDI_Watson/mean_fiso.nii.gz \
+            mv ${subj}${sessionID}.NODDI_Watson/mean_fiso.nii.gz \
                 ${workdir}/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-isovf_noddi.nii.gz
 
         else
