@@ -11,7 +11,6 @@
 #SBATCH --nice=2000
 #SBATCH --output=dwi-preproc_%A.log
 
-
 #notes:
 
 # Define color variables
@@ -23,11 +22,10 @@ NC='\033[0m' # No Color
 
 ## source software
 module load fsl/6.0.6.5
-module load ANTs/2.4.1
+module load ANTs/2.5.0
 module load Anaconda3/2022.05
 conda activate /scratch/anw/share/python-env/mrtrix
-synthstrippath=/data/anw/anw-gold/NP/doorgeefluik/container_apps/synthstrip.1.2.sif
-#scriptdir=/data/anw/anw-gold/NP/projects/data_chris/Tmult/scripts
+synthstrippath=/scratch/anw/share-np/fmridenoiser/synthstrip.1.2.sif
 threads=8
 
 # Initialize variables
@@ -83,6 +81,13 @@ for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
     else
         sessionpath=/${session}/
         sessionfile=_${session}_
+
+    fi
+
+    if [[ ! -f ${dwidir}/${subj}${sessionfile}_dwi.nii.gz || ! -f ${dwidir}/${subj}${sessionfile}_dwi.bvec ]]; then
+        echo -e "${YELLOW}no dwi scan/bvec found for ${subj} - ${session}${NC}"
+
+        continue
 
     fi
 
@@ -359,14 +364,14 @@ for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
         -i ${subj}${sessionfile}space-dwi_desc-nodif_epi.nii.gz \
         --mask ${workdir}/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-brain-uncorrected_mask.nii.gz
 
-
     ##########
     ## EDDY ##
     ##########
+    cd ${scriptdir}/${subj}
+
     echo
     echo -e "${BLUE}starting EDDY${NC}"
     echo
-    cd ${workdir}/${subj}${sessionpath}dwi
     echo "0 1 0 ${dwi_trt}" >${workdir}/${subj}${sessionpath}dwi/${subj}${sessionfile}acq-DWI_desc-acqparams.tsv
 
     sbatch --wait --gres=gpu:1g.10gb:1 ${scriptdir}/dwi-02b-eddy.sh \
@@ -397,19 +402,19 @@ for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
         ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi
 
     # clean-up
-    if [ -f ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-preproc_dwi.nii.gz ] \
-    && [ -f ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-preproc_dwi.bvec ] \
-    && [ -f ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_label-cnr-maps_desc-preproc_dwi.nii.gz ]; then
-    rm -r ${workdir}/${subj}${sessionpath}
-    rm ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/*meanb0* \
-        ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/*dns+degibbs*
+    if [ -f ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-preproc_dwi.nii.gz ] &&
+        [ -f ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-preproc_dwi.bvec ] &&
+        [ -f ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_label-cnr-maps_desc-preproc_dwi.nii.gz ]; then
+        rm -r ${workdir}/${subj}${sessionpath}
+        rm ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/*meanb0* \
+            ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/*dns+degibbs*
 
-    echo
-    echo -e ${GREEN}FINISHED processing ${subj}${sessionpath}${NC}
-    echo
+        echo
+        echo -e ${GREEN}FINISHED processing ${subj}${sessionpath}${NC}
+        echo
 
-    else 
-    echo -e "${RED}ERROR! not all output was created successfully${NC}" 
+    else
+        echo -e "${RED}ERROR! not all output was created successfully${NC}"
 
     fi
 

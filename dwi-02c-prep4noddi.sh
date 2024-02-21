@@ -5,7 +5,7 @@
 #SBATCH --partition=luna-cpu-short
 #SBATCH --qos=anw-cpu
 #SBATCH --cpus-per-task=8
-#SBATCH --time=00-00:45:00
+#SBATCH --time=00-01:45:00
 #SBATCH --nice=2000
 #SBATCH --output=noddi_%A.log
 
@@ -68,6 +68,7 @@ for dwidir in ${outputdir}/dwi-preproc/${subj}/{,ses*/}dwi; do
     if [ -z ${session} ]; then
         sessionpath=/
         sessionfile=_
+       
     else
         sessionpath=/${session}/
         sessionfile=_${session}_
@@ -85,6 +86,14 @@ for dwidir in ${outputdir}/dwi-preproc/${subj}/{,ses*/}dwi; do
     Nshells=$(echo "$unique_values" | wc -w)
 
     if ((Nshells > 1)); then
+
+if [[ -f ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-isovf_noddi.nii.gz \
+&& -f ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-ndi_noddi.nii.gz \
+&& -f ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-odi_noddi.nii.gz ]]; then 
+        echo -e "${GREEN}${subj}${sessionfile} already has NODDI output${NC}"
+exit
+fi
+
         echo
         echo -e "${GREEN}${subj}${sessionfile} is multishell. Preparing for NODDI${NC}"
         echo

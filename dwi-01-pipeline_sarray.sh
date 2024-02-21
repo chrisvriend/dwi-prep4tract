@@ -131,11 +131,11 @@
 # │           └── T1w-2-diff.mat
 
 ## SLURM INPUTS ##
-#SBATCH --mem=2G
+#SBATCH --mem=1G
 #SBATCH --partition=luna-cpu-short
 #SBATCH --qos=anw-cpu
 #SBATCH --cpus-per-task=1
-#SBATCH --time=00-06:00:00
+#SBATCH --time=00-08:00:00
 #SBATCH --nice=2000
 #SBATCH --output=dwipip_%A_%a.log
 ###################
@@ -149,6 +149,7 @@ NC='\033[0m' # No Color
 
 
 # Initialize variables
+nstreamlines=50M
 bidsdir=""
 outputdir=""
 workdir=""
@@ -188,11 +189,11 @@ while getopts ":i:o:f:w:j:n:c:" opt; do
     esac
 done
 
-cd ${bidsdir}
+#cd ${bidsdir}
 # SLURM ARRAY INPUTS 
 subj=$(sed -n "${SLURM_ARRAY_TASK_ID}p" ${subjects})
 # random delay
-duration=$((RANDOM % 120 + 2))
+duration=$((RANDOM % 40 + 2))
 echo -e "${YELLOW}INITIALIZING...(wait a sec)${NC}"
 echo
 sleep ${duration}
@@ -203,46 +204,49 @@ mkdir -p ${workdir}
 ###########################
 ##  DWI-PREPROCESSING    ##
 ###########################
-cd ${bidsdir}/${subj}
+mkdir -p ${scriptdir}/${subj}
+cd ${scriptdir}/${subj}
 echo
 echo -e "${BLUE}Preprocessing ${subj}${NC}"
 echo
-sbatch --wait ${scriptdir}/dwi-02a-preproc.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -s ${subj}
+sbatch --wait ${scriptdir}/dwi-02a-preproc.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -s ${subj} -c ${scriptdir}
 # delete color codes from log file and copy to log directory
-sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" dwi-preproc_*.log >> ${outputdir}/dwi-preproc/${subj}/logs/${subj}_dwi-preproc.log
+sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" *preproc_*.log >> ${outputdir}/dwi-preproc/${subj}/logs/${subj}_dwi-preproc.log
 
 ###########################
 ##      DWI - NODDI      ##
 ###########################
 if [[ ${noddi} == 1 ]]; then 
-cd ${bidsdir}/${subj}
+cd ${scriptdir}/${subj}
 echo
 echo -e "${BLUE}perform NODDI${NC}"
 echo
-sbatch --wait ${scriptdir}/dwi-02c-prep4noddi.sh -w ${workdir} -o ${outputdir} -s ${subj}
-sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" noddi_*.log >> ${outputdir}/dwi-preproc/${subj}/logs/${subj}_dwi-noddi.log
+sbatch --wait ${scriptdir}/dwi-02c-prep4noddi.sh -w ${workdir} -o ${outputdir} -s ${subj} -c ${scriptdir}
+sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" *noddi_*.log >> ${outputdir}/dwi-preproc/${subj}/logs/${subj}_dwi-noddi.log
 fi
 
 ###########################
 ## DWI-2-T1 registration ##
 ###########################
-cd ${bidsdir}/${subj}
+cd ${scriptdir}/${subj}
 echo
 echo -e "${BLUE}anat-2-dwi registration${NC}"
 echo
 sbatch --wait ${scriptdir}/dwi-03-anat2dwi.sh -i ${bidsdir} -o ${outputdir} -f ${freesurferdir} -w ${workdir} -s ${subj} -c ${scriptdir}
-sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" dwi-anat2dwi*.log > ${outputdir}/dwi-preproc/${subj}/logs/${subj}_dwi-anat2dwi.log
+sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" *anat2dwi*.log > ${outputdir}/dwi-preproc/${subj}/logs/${subj}_dwi-anat2dwi.log
 
 ###########################
 ##   DWI-TRACTOGRAPHY    ##
 ###########################
-cd ${bidsdir}/${subj}
+cd ${scriptdir}/${subj}
 echo
 echo -e "${BLUE}dwi fod + tractogram${NC}"
 echo
 sbatch --wait ${scriptdir}/dwi-04a-connectome.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -s ${subj} -c ${scriptdir}
-sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" dwi-tck2conn*.log > ${outputdir}/dwi-connectome/${subj}/logs/${subj}_dwi-tckconn.log
-
+sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" *fod+tck*.log > ${outputdir}/dwi-connectome/${subj}/logs/${subj}_dwi-fodtck.log
+echo -e "${BLUE}dwi tract - 2 - connectome${NC}"
+sbatch --wait ${scriptdir}/dwi-04b-tracts2conn_v2.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -s ${subj} -n ${nstreamlines}
+sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" *tck2conn*.log > ${outputdir}/dwi-connectome/${subj}/logs/${subj}_dwi-tckconn.log
 ###########################
 ##   DWI-AUTOTRACT    ##
 ###########################

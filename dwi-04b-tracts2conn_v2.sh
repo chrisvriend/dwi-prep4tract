@@ -2,8 +2,8 @@
 
 #SBATCH --job-name=tck2conn
 #SBATCH --mem=2G
-#SBATCH --partition=luna-short
-#SBATCH --qos=anw
+#SBATCH --partition=luna-cpu-short
+#SBATCH --qos=anw-cpu-big
 #SBATCH --cpus-per-task=2
 #SBATCH --time=00-00:45:00
 #SBATCH --nice=2000

@@ -68,7 +68,7 @@ threads=16
 ###############################################################################
 module load fsl/6.0.6.5
 module load FreeSurfer/7.3.2-centos8_x86_64
-module load ANTs/2.4.1
+module load ANTs/2.5.0
 module load Anaconda3/2022.05
 conda activate /scratch/anw/share/python-env/mrtrix
 export PATH=${PATH}:/scratch/anw/share/python-env/mrtrix/MRtrix3Tissue/bin
@@ -94,11 +94,20 @@ for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
 
   fi
   if (($(ls ${outputdir}/dwi-preproc/${subj}${sessionpath}anat/${subj}${sessionfile}space-dwi_atlas* 2>/dev/null | wc -l) == 0)); then
-    echo -e "${RED}${subj}${sessionfile} has no atlases asoutput"
+    echo -e "${RED}${subj}${sessionfile} has no atlases as output"
     echo -e "did anat2dwi fail / no FreeSurfer output available?"
     echo -e "aborting ${NC}"
     continue
   fi
+
+
+if [ ! -f ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-preproc_dwi.nii.gz  ]; then 
+echo -e "${RED}ERROR!! no preprocessed dwi scan found for ${subj} - ${session}${NC}"
+continue 
+
+fi
+
+
 
   # check if output already available #
   if [ -f ${outputdir}/dwi-connectome/${subj}${sessionpath}dwi/${subj}${sessionfile}tissue-WM-norm_fod.nii.gz ] &&
@@ -377,32 +386,33 @@ for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
   rsync -a *response* ${outputdir}/dwi-connectome/${subj}${sessionpath}rpf
   mrconvert ${subj}${sessionfile}FOD-wm-norm.mif \
     ${outputdir}/dwi-connectome/${subj}${sessionpath}dwi/${subj}${sessionfile}tissue-WM-norm_fod.nii.gz
+
   ############################
   # Tracts to connectome     #
   #############################
 
-  cd ${bidsdir}/${subj}
-  if [ -z ${session} ]; then
-    sbatch --wait ${scriptdir}/dwi-04b-tracts2conn.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -s ${subj} -n ${nstreamlines}
-  else
-    sbatch --wait ${scriptdir}/dwi-04b-tracts2conn.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -t ${session} -s ${subj} -n ${nstreamlines}
-  fi
+  # cd ${scriptdir}/${subj}
+  # if [ -z ${session} ]; then
+  #   sbatch --wait ${scriptdir}/dwi-04b-tracts2conn.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -s ${subj} -n ${nstreamlines}
+  # else
+  #   sbatch --wait ${scriptdir}/dwi-04b-tracts2conn.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -t ${session} -s ${subj} -n ${nstreamlines}
+  # fi
 
-  if (($(ls ${outputdir}/dwi-connectome/${subj}${sessionpath}conn/${subj}${sessionfile}atlas-*_desc-*_connmatrix.csv 2>/dev/null | wc -l) > 0)); then
+  # if (($(ls ${outputdir}/dwi-connectome/${subj}${sessionpath}conn/${subj}${sessionfile}atlas-*_desc-*_connmatrix.csv 2>/dev/null | wc -l) > 0)); then
 
-    echo "--------------------------------------------------"
-    echo -e "${GREEN}finished fod/tck/conn generation subject = ${subj}${NC}"
-    echo "---------------------------------------------------"
+  #   echo "--------------------------------------------------"
+  #   echo -e "${GREEN}finished fod/tck/conn generation subject = ${subj}${NC}"
+  #   echo "---------------------------------------------------"
 
-    #clean-up
-    rm ${workdir}/${subj}${sessionpath}dwi/*.mif
-    rm *.mif
-  else
-    echo
-    echo -e "${RED}ERROR! fod/tck/conn generation failed for subject = ${subj}${sessionfile}"
-    echo -e "inspect the log file${NC}"
-    continue
+  #   #clean-up
+  #   rm ${workdir}/${subj}${sessionpath}dwi/*.mif
+  #   rm *.mif
+  # else
+  #   echo
+  #   echo -e "${RED}ERROR! fod/tck/conn generation failed for subject = ${subj}${sessionfile}"
+  #   echo -e "inspect the log file${NC}"
+  #   continue
 
-  fi
+  # fi
 
 done
