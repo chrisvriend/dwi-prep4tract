@@ -193,7 +193,7 @@ mkdir -p ${workdir}
 ###########################
 ##  DWI-PREPROCESSING    ##
 ###########################
-cd ${bidsdir}
+cd ${scriptdir}/${subj}
 echo
 echo -e "${BLUE}Preprocessing ${subj}${NC}"
 echo
@@ -201,18 +201,11 @@ sbatch --wait ${scriptdir}/dwi-02a-preproc.sh -i ${bidsdir} -o ${outputdir} -w $
 # delete color codes from log file and copy to log directory
 sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" dwi-preproc_*.log >> ${outputdir}/dwi-preproc/${subj}/logs/${subj}_dwi-preproc.log
 
-###########################
-##      DWI - NODDI      ##
-###########################
-if [[ ${noddi} == 1 ]]; then 
-sbatch --wait ${scriptdir}/dwi-02c-prep4noddi.sh -w ${workdir} -o ${outputdir} -s ${subj} -c ${scriptdir}
-sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" noddi_*.log >> ${outputdir}/dwi-preproc/${subj}/logs/${subj}_dwi-noddi.log
-fi
 
 ###########################
 ## DWI-2-T1 registration ##
 ###########################
-cd ${bidsdir}
+cd ${scriptdir}/${subj}
 
 sbatch --wait ${scriptdir}/dwi-03-anat2dwi.sh -i ${bidsdir} -o ${outputdir} -f ${freesurferdir} -w ${workdir} -s ${subj} -c ${scriptdir}
 sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" dwi-anat2dwi*.log > ${outputdir}/dwi-preproc/${subj}/logs/${subj}_dwi-anat2dwi.log
@@ -221,9 +214,17 @@ sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" dwi-anat2dwi*.log > ${outpu
 ###########################
 ##   DWI-TRACTOGRAPHY    ##
 ###########################
-cd ${bidsdir}
+cd ${scriptdir}/${subj}
+mkdir -p ${outputdir}/dwi-connectome/${subj}/logs
+
+echo
+echo -e "${BLUE}dwi fod + tractogram${NC}"
+echo
 sbatch --wait ${scriptdir}/dwi-04a-connectome.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -s ${subj} -c ${scriptdir}
-sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" dwi-tck2conn*.log > ${outputdir}/dwi-connectome/${subj}/logs/${subj}_dwi-tckconn.log
+sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" *fod+tck*.log > ${outputdir}/dwi-connectome/${subj}/logs/${subj}_dwi-fodtck.log
+echo -e "${BLUE}dwi tract - 2 - connectome${NC}"
+sbatch --wait ${scriptdir}/dwi-04b-tracts2conn_v2.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -s ${subj} -n ${nstreamlines}
+sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" *tck2conn*.log > ${outputdir}/dwi-connectome/${subj}/logs/${subj}_dwi-tckconn.log
 
 
 ###########################

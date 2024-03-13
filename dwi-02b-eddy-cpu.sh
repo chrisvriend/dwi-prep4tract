@@ -2,14 +2,14 @@
 
 #SBATCH --job-name=eddy
 #SBATCH --mem=6G
-#SBATCH --partition=luna-short
-#SBATCH --cpus-per-task=1
-#SBATCH --time=00-2:00:00
+#SBATCH --partition=luna-cpu-short
+#SBATCH --cpus-per-task=8
+#SBATCH --time=00-4:00:00
 #SBATCH --nice=3000
-#SBATCH --qos=anw
+#SBATCH --qos=anw-cpu
 #SBATCH --output eddy_%A.log
 
-module load fsl/6.0.6.5
+module load fsl/6.0.5.1
 
 # inputs
 DWImain=${1}
@@ -22,14 +22,12 @@ topup=${7}
 DWIout=${8}
 method=${9}
 
-# choose method of eddy correction (default or volcorr, nofmap)
+# choose method of eddy correction (default/volcorr/nofmap)
 
 # topup is assigned but 'empty'
 basedir=$(dirname "$(readlink -f ${DWImain})")
 echo ${basedir}
 echo "starting EDDY"
-basedir=$(dirname DWImain)
-cd ${basedir}
 
 # create index.txt file
 idx=$(fslnvols ${DWImain})
@@ -44,11 +42,11 @@ fi
 
 # default
 if [[ ${method} == "default" ]]; then
-    eddy_cuda10.2 \
+    eddy_openmp \
         --imain=${DWImain} \
         --mask=${DWImask} \
         --acqp=${DWIacqp} \
-        --index=index.txt \
+        --index=${basedir}/index.txt \
         --bvecs=${DWIbvecs} \
         --bvals=${DWIbvals} \
         --out=${DWIout} \
@@ -60,7 +58,7 @@ if [[ ${method} == "default" ]]; then
     # run QC
     echo
     echo "running QC"
-    eddy_quad ${DWIout} \
+    eddy_openmp ${DWIout} \
         -idx index.txt \
         -par ${DWIacqp} \
         -m ${DWImask} \
@@ -71,11 +69,11 @@ elif [[ ${method} == "volcorr" ]]; then
 
     if ((STavail == 1)); then
         # w/ slice-to-vol correction
-        eddy_cuda10.2 \
+        eddy_openmp \
             --imain=${DWImain} \
             --mask=${DWImask} \
             --acqp=${DWIacqp} \
-            --index=index.txt \
+            --index=${basedir}/index.txt \
             --json=${DWIjson} \
             --bvecs=${DWIbvecs} \
             --bvals=${DWIbvals} \
@@ -90,12 +88,13 @@ elif [[ ${method} == "volcorr" ]]; then
             --s2v_lambda=1 --s2v_interp=trilinear >${basedir}/eddy.log
 
     else
+        # w/o slice-to-vol correction
 
-        eddy_cuda10.2 \
+        eddy_openmp \
             --imain=${DWImain} \
             --mask=${DWImask} \
             --acqp=${DWIacqp} \
-            --index=index.txt \
+            --index=${basedir}/index.txt \
             --json=${DWIjson} \
             --bvecs=${DWIbvecs} \
             --bvals=${DWIbvals} \
@@ -112,8 +111,8 @@ elif [[ ${method} == "volcorr" ]]; then
 
 elif [[ ${method} == "nofmap" ]]; then
 
-    eddy_cuda10.2 \ 
-    --imain=${DWImain} \
+    eddy_openmp \
+        --imain=${DWImain} \
         --mask=${DWImask} \
         --acqp=${DWIacqp} \
         --index=${basedir}/index.txt \
@@ -122,10 +121,17 @@ elif [[ ${method} == "nofmap" ]]; then
         --out=${DWIout} \
         --repol --cnr_maps \
         --slm=linear \
-        --verbose \
-        --mbs_niter=10 --mbs_lambda=10 --mbs_ksp=10 \
-        --niter=8 --fwhm=10,6,4,2,0,0,0,0 \
-        --mporder=8 >${basedir}/eddy.log
+        --verbose >${basedir}/eddy.log
+
+    # run QC
+    echo
+    echo "running QC"
+    echo
+    eddy_quad ${DWIout} \
+        -idx ${basedir}/index.txt \
+        -par ${DWIacqp} \
+        -m ${DWImask} \
+        -b ${DWIbvals}
 
 else
 

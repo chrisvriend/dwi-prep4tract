@@ -7,12 +7,13 @@
 
 
 # input variables and paths
-scriptdir=/data/anw/anw-gold/NP/projects/data_chris/Tmult/scripts
-bidsdir=/data/anw/anw-gold/NP/projects/data_propark/bids/
+scriptdir=/home/anw/cvriend/dwi-prep4tract
+bidsdir=/data/anw/anw-archive/NP/imaging-samples/OCD_global
 workdir=~/my-scratch/dwi-preproc
-outputdir=/home/anw/cvriend/my-scratch/propark_derivatives
-freesurferdir=/data/anw/anw-gold/NP/projects/data_propark/derivatives/freesurfer
-subj=sub-proparkXXXX
+outputdir=/data/anw/anw-archive/NP/projects/archive_OBS/derivatives
+freesurferdir=/data/anw/anw-archive/NP/projects/archive_OBS/derivatives/freesurfer
+subj=sub-5125
+noddi=0
 
 
 # launch pipeline for one subject

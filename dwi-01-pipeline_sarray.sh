@@ -205,6 +205,7 @@ mkdir -p ${workdir}
 ##  DWI-PREPROCESSING    ##
 ###########################
 mkdir -p ${scriptdir}/${subj}
+mkdir -p ${outputdir}/dwi-preproc/${subj}/logs
 cd ${scriptdir}/${subj}
 echo
 echo -e "${BLUE}Preprocessing ${subj}${NC}"
@@ -239,6 +240,8 @@ sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" *anat2dwi*.log > ${outputdi
 ##   DWI-TRACTOGRAPHY    ##
 ###########################
 cd ${scriptdir}/${subj}
+mkdir -p ${outputdir}/dwi-connectome/${subj}/logs
+
 echo
 echo -e "${BLUE}dwi fod + tractogram${NC}"
 echo

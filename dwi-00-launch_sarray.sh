@@ -8,25 +8,32 @@
 # modify input variables and no. simultaneous subjects to process
 
 # input variables and paths
-scriptdir=/data/anw/anw-gold/NP/projects/data_chris/Tmult/scripts/dwi-scripts
-bidsdir=/data/anw/anw-gold/NP/projects/data_propark/bids
+
+scriptdir=/home/anw/cvriend/dwi-prep4tract
+bidsdir=/data/anw/anw-archive/NP/imaging-samples/OCD_ARRIBA
 workdir=~/my-scratch/dwi-preproc
-outputdir=/home/anw/cvriend/my-scratch/propark_derivatives2
-freesurferdir=/data/anw/anw-gold/NP/projects/data_propark/derivatives/freesurfer
+outputdir=/data/anw/anw-archive/NP/projects/archive_ARRIBA/derivatives
+freesurferdir=~/my-scratch/ARRIBA_FS
+
 
 #how many in parallel?
-simul=2
+simul=4
 # run noddi? 1/0 = yes/no
-noddi=1
+noddi=0
 
 
-cd ${bidsdir}
-ls -d sub-*/ | sed 's:/.*::' > subjects.txt
-nsubj=$(ls -d sub-*/ | wc -l)
+# insert own subjlist OR let the script produce it for you from the bids directory
+
+#cd ${bidsdir}
+#ls -d sub-*/ | sed 's:/.*::' > ${scriptdir}/subjects.txt
+#nsubj=$(ls -d sub-*/ | wc -l)
+nsubj=$(cat ${scriptdir}/subjects2.txt | wc -l)
+
+cd ${scriptdir}
 
 # launch pipeline slurm array
 sbatch --array="1-${nsubj}%${simul}" ${scriptdir}/dwi-01-pipeline_sarray.sh \
  -i ${bidsdir} \
  -o ${outputdir} -w ${workdir} \
- -j ${bidsdir}/subjects.txt \
+ -j ${scriptdir}/subjects2.txt \
  -f ${freesurferdir} -n ${noddi} -c ${scriptdir}

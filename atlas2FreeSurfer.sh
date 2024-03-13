@@ -96,78 +96,6 @@ if [[ ! -f ${SUBJECTS_DIR}/${subj}/mri/BNA+aseg.nii.gz ]]; then
 fi
 
 #=============================================================================
-# BUCKNER CEREBELLUM TO FREESURFER SPACE
-#=============================================================================
-if [[ ! -f ${SUBJECTS_DIR}/${subj}/mri/Buckner2011_atlas.nii.gz ]]; then
-    #3. warp the BucknerAtlas1mm_FSI.nii.gz from freesurfer nonlinear volumetric space to each subject:
-
-    mri_vol2vol --mov $SUBJECTS_DIR/${subj}/mri/norm.mgz --s ${subj} \
-        --targ ${atlasdir}/cerebellum/BucknerAtlas1mm_FSI.nii.gz --m3z talairach.m3z \
-        --o ${SUBJECTS_DIR}/${subj}/mri/Buckner2011_atlas.nii.gz --nearest --inv-morph
-
-fi
-
-if ([[ ! -f ${SUBJECTS_DIR}/${subj}/mri/Buckner_atlas_mask_left.nii.gz ]] ||
-    [[ ! -f ${SUBJECTS_DIR}/${subj}/mri/Buckner_atlas_mask_right.nii.gz ]]) &&
-    [ ! -f ${SUBJECTS_DIR}/${subj}/mri/Buck_cerebellum.nii.gz ]; then
-
-    #4. Create a cerebellum gray matter mask in the native subject's space by applying mri_binarize to aparc+aseg.mgz of the subject
-    # 47 = right, 8 = left
-    mri_binarize --i $SUBJECTS_DIR/${subj}/mri/aparc+aseg.mgz --match 8 \
-        --o ${SUBJECTS_DIR}/${subj}/mri/cerebellum_mask_left.nii.gz
-    mri_binarize --i $SUBJECTS_DIR/${subj}/mri/aparc+aseg.mgz --match 47 \
-        --o ${SUBJECTS_DIR}/${subj}/mri/cerebellum_mask_right.nii.gz
-    mri_binarize --i $SUBJECTS_DIR/${subj}/mri/aparc+aseg.mgz --match 8 47 \
-        --o ${SUBJECTS_DIR}/${subj}/mri/cerebellum_mask.nii.gz
-
-    for hemi in left right; do
-
-        #5. Using this mask to mask the Buckner cerebellum parcellations
-        fslmaths ${SUBJECTS_DIR}/${subj}/mri/Buckner2011_atlas.nii.gz \
-            -mas ${SUBJECTS_DIR}/${subj}/mri/cerebellum_mask_${hemi}.nii.gz \
-            ${SUBJECTS_DIR}/${subj}/mri/Buckner_atlas_mask_${hemi}.nii.gz
-
-        float=$(fslstats ${SUBJECTS_DIR}/${subj}/mri/Buckner_atlas_mask_${hemi}.nii.gz -R | awk '{ print $2}')
-        int=${float%.*}
-        if test ${int} -lt 1; then
-            echo "redo mask creation"
-            fslmaths ${SUBJECTS_DIR}/${subj}/mri/Buckner2011_atlas.nii.gz \
-                -mas ${SUBJECTS_DIR}/${subj}/mri/cerebellum_mask_${hemi}.nii.gz \
-                ${SUBJECTS_DIR}/${subj}/mri/Buckner_atlas_mask_${hemi}.nii.gz
-
-        fi
-    done
-
-    fslmaths ${SUBJECTS_DIR}/${subj}/mri/Buckner_atlas_mask_left.nii.gz \
-        -add 16000 ${SUBJECTS_DIR}/${subj}/mri/Buckner_atlas_mask_left.nii.gz
-    fslmaths ${SUBJECTS_DIR}/${subj}/mri/Buckner_atlas_mask_right.nii.gz \
-        -add 17000 ${SUBJECTS_DIR}/${subj}/mri/Buckner_atlas_mask_right.nii.gz
-    fslmaths ${SUBJECTS_DIR}/${subj}/mri/Buckner_atlas_mask_left.nii.gz \
-        -thr 16001 ${SUBJECTS_DIR}/${subj}/mri/Buckner_atlas_mask_left.nii.gz
-    fslmaths ${SUBJECTS_DIR}/${subj}/mri/Buckner_atlas_mask_right.nii.gz \
-        -thr 17001 ${SUBJECTS_DIR}/${subj}/mri/Buckner_atlas_mask_right.nii.gz
-    fslmaths ${SUBJECTS_DIR}/${subj}/mri/Buckner_atlas_mask_left.nii.gz \
-        -add ${SUBJECTS_DIR}/${subj}/mri/Buckner_atlas_mask_right.nii.gz \
-        ${SUBJECTS_DIR}/${subj}/mri/Buck_cerebellum.nii.gz
-    # clean up
-    rm ${SUBJECTS_DIR}/${subj}/mri/Buckner_atlas_mask_left.nii.gz \
-        ${SUBJECTS_DIR}/${subj}/mri/Buckner_atlas_mask_right.nii.gz
-fi
-
-#=============================================================================
-# MAKE HYBRID BNA CEREBELLUM ATLAS
-#=============================================================================
-if [ ! -f ${SUBJECTS_DIR}/${subj}/mri/BNA+cerebellum+aseg.nii.gz ]; then
-
-    mri_convert ${SUBJECTS_DIR}/${subj}/mri/BNA+aseg.mgz ${SUBJECTS_DIR}/${subj}/mri/BNA+aseg.nii.gz
-    fslmaths ${SUBJECTS_DIR}/${subj}/mri/cerebellum_mask.nii.gz -binv ${SUBJECTS_DIR}/${subj}/mri/inv_cerebellum_mask.nii.gz
-    fslmaths ${SUBJECTS_DIR}/${subj}/mri/BNA+aseg.nii.gz -mul ${SUBJECTS_DIR}/${subj}/mri/inv_cerebellum_mask.nii.gz \
-        ${SUBJECTS_DIR}/${subj}/mri/BNA+aseg_cortical.nii.gz
-    fslmaths ${SUBJECTS_DIR}/${subj}/mri/BNA+aseg_cortical.nii.gz -add ${SUBJECTS_DIR}/${subj}/mri/Buck_cerebellum.nii.gz \
-        ${SUBJECTS_DIR}/${subj}/mri/BNA+cerebellum+aseg.nii.gz
-fi
-
-#=============================================================================
 # Schaefer atlases TO FREESURFER SPACE
 #=============================================================================
 
@@ -209,23 +137,7 @@ for parcel in 300P7N 300P17N 400P7N 400P17N; do
     if [ ! -f ${SUBJECTS_DIR}/${subj}/mri/${parcel}+aseg.mgz ]; then
         mri_aparc2aseg --s ${subj} --o ${SUBJECTS_DIR}/${subj}/mri/${parcel}+aseg.mgz --annot ${parcel}
     fi
-    #=============================================================================
-    # MAKE HYBRID 300/400P7N CEREBELLUM ATLAS
-    #=============================================================================
-    # hybrid atlases
-    if [[ ${parcel} == "300P7N" ]] || [[ ${parcel} == "400P7N" ]]; then
-        if [ ! -f ${SUBJECTS_DIR}/${subj}/mri/${parcel}+cerebellum+aseg.nii.gz ]; then
-            echo "add cerebellar regions to ${parcel}"
-            mri_convert ${SUBJECTS_DIR}/${subj}/mri/${parcel}+aseg.mgz ${SUBJECTS_DIR}/${subj}/mri/${parcel}+aseg.nii.gz
-            fslmaths ${SUBJECTS_DIR}/${subj}/mri/${parcel}+aseg.nii.gz -mul ${SUBJECTS_DIR}/${subj}/mri/inv_cerebellum_mask.nii.gz \
-                ${SUBJECTS_DIR}/${subj}/mri/${parcel}+aseg_cortical.nii.gz
-            fslmaths ${SUBJECTS_DIR}/${subj}/mri/${parcel}+aseg_cortical.nii.gz \
-                -add ${SUBJECTS_DIR}/${subj}/mri/Buck_cerebellum.nii.gz ${SUBJECTS_DIR}/${subj}/mri/${parcel}+cerebellum+aseg.nii.gz
-            # clean up
-            rm ${SUBJECTS_DIR}/${subj}/mri/${parcel}+aseg_cortical.nii.gz
 
-        fi
-    fi
 done
 
 # aparc 500
@@ -243,7 +155,7 @@ fi
 # convert 2 volume space
 if [ ! -f ${SUBJECTS_DIR}/${subj}/mri/aparc500+aseg.mgz ]; then
     mri_aparc2aseg --s ${subj} --o ${SUBJECTS_DIR}/${subj}/mri/aparc500+aseg.mgz --annot aparc500
-  #  mrconvert ${SUBJECTS_DIR}/${subj}/mri/aparc500+aseg.mgz ${SUBJECTS_DIR}/${subj}/mri/aparc500+aseg.nii.gz -force
+    #  mrconvert ${SUBJECTS_DIR}/${subj}/mri/aparc500+aseg.mgz ${SUBJECTS_DIR}/${subj}/mri/aparc500+aseg.nii.gz -force
 
 fi
 
