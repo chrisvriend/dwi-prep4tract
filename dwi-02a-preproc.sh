@@ -84,7 +84,7 @@ for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
 
     fi
 
-    if [[ ! -f ${dwidir}/${subj}${sessionfile}_dwi.nii.gz || ! -f ${dwidir}/${subj}${sessionfile}_dwi.bvec ]]; then
+    if [[ ! -f ${dwidir}/${subj}${sessionfile}dwi.nii.gz || ! -f ${dwidir}/${subj}${sessionfile}dwi.bvec ]]; then
         echo -e "${YELLOW}no dwi scan/bvec found for ${subj} - ${session}${NC}"
 
         continue
