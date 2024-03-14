@@ -132,11 +132,11 @@
 # │           └── T1w-2-diff.mat
 
 ## SLURM INPUTS ##
-#SBATCH --mem=2G
+#SBATCH --mem=1G
 #SBATCH --partition=luna-cpu-short
 #SBATCH --qos=anw-cpu
 #SBATCH --cpus-per-task=1
-#SBATCH --time=00-06:00:00
+#SBATCH --time=00-08:00:00
 #SBATCH --nice=2000
 ###################
 

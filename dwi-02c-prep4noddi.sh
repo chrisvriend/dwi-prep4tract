@@ -13,7 +13,7 @@
 # source software                                                    #
 ###############################################################################
 module load fsl/6.0.6.5
-module load ANTs/2.4.1
+module load ANTs/2.5.0
 module load Anaconda3/2022.05
 synthstrippath=/data/anw/anw-gold/NP/doorgeefluik/container_apps/synthstrip.1.2.sif
 conda activate /scratch/anw/share/python-env/mrtrix

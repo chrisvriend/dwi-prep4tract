@@ -149,7 +149,7 @@ NC='\033[0m' # No Color
 
 
 # Initialize variables
-nstreamlines=50M
+nstreamlines=100M
 bidsdir=""
 outputdir=""
 workdir=""

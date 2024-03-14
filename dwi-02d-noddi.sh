@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --job-name=NODDI
-#SBATCH --mem-per-cpu=6G
+#SBATCH --mem=6G
 #SBATCH --partition=luna-short
 #SBATCH --cpus-per-task=1
 #SBATCH --time=00-00:20:00
