@@ -75,22 +75,6 @@ threads=2
 echo -e "${BLUE}transfer FreeSurfer output to work directory${NC}"
 mkdir -p ${workdir}/${subj}
 
-if [[ ! -d ${freesurferdir}/${subj}/mri ]]; then
-    echo -e "${RED}FreeSurfer output not available${NC}"
-    echo -e "${RED}processing stopped for ${subj}${NC}"
-    sleep 1
-    exit
-fi
-
-rsync -az --ignore-existing ${freesurferdir}/${subj} ${workdir}/${subj}/freesurfer/
-export SUBJECTS_DIR=${workdir}/${subj}/freesurfer
-mkdir -p ${SUBJECTS_DIR}/${subj}/dwi
-echo
-echo -e "${BLUE}Warp atlases to FreeSurfer output${NC}"
-sbatch --wait ${scriptdir}/atlas2FreeSurfer.sh ${SUBJECTS_DIR} ${subj}
-echo
-echo -e "${BLUE}continue with anat to dwi registration${NC}"
-echo
 
 for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
     if [ ! -d ${dwidir} ]; then
@@ -110,6 +94,25 @@ for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
         sessionfile=_${session}_
 
     fi
+
+
+if [[ ! -d ${freesurferdir}${sessionpath}${subj}/mri ]]; then
+    echo -e "${RED}FreeSurfer output not available${NC}"
+    echo -e "${RED}processing stopped for ${subj}${NC}"
+    sleep 1
+    exit
+fi
+
+rsync -az --ignore-existing ${freesurferdir}${sessionpath}${subj} ${workdir}/${subj}/freesurfer/
+export SUBJECTS_DIR=${workdir}/${subj}/freesurfer
+mkdir -p ${SUBJECTS_DIR}/${subj}/dwi
+echo
+echo -e "${BLUE}Warp atlases to FreeSurfer output${NC}"
+sbatch --wait ${scriptdir}/atlas2FreeSurfer.sh ${SUBJECTS_DIR} ${subj}
+echo
+echo -e "${BLUE}continue with anat to dwi registration${NC}"
+echo
+
 
     cd ${dwidir}
 
