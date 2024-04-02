@@ -153,8 +153,8 @@ echo
             # assumes that there is only ONE!! FreeSurfer output per subject
 
             # using T1 from Freesurfer directory
-            if [ ! -f ${workdir}/${subj}/anat/${subj}_desc-preproc_T1w.nii.gz ] ||
-                [ ! -f ${workdir}/${subj}/anat/${subj}_desc-brain_T1w.nii.gz ]; then
+            if [ ! -f ${workdir}/${subj}/anat/${subj}${sessionfile}desc-preproc_T1w.nii.gz ] ||
+                [ ! -f ${workdir}/${subj}/anat/${subj}${sessionfile}desc-brain_T1w.nii.gz ]; then
 
                 # l because they are symbolic links
                 rsync -av \
@@ -166,29 +166,29 @@ echo
                 cd ${workdir}/${subj}/anat
                 # convert to nii.gz
                 mri_convert --in_type mgz --out_type nii \
-                    --out_orientation RAS brain.mgz ${subj}_desc-brain_T1w.nii.gz
+                    --out_orientation RAS brain.mgz ${subj}${sessionfile}desc-brain_T1w.nii.gz
                 mri_convert --in_type mgz --out_type nii \
-                    --out_orientation RAS synthSR.mgz ${subj}_desc-preproc_T1w.nii.gz
+                    --out_orientation RAS synthSR.mgz ${subj}${sessionfile}desc-preproc_T1w.nii.gz
                 mri_convert --in_type mgz --out_type nii \
-                    --out_orientation RAS aseg.mgz ${subj}_desc-aseg_dseg.nii.gz
+                    --out_orientation RAS aseg.mgz ${subj}${sessionfile}desc-aseg_dseg.nii.gz
 
                 # binarize
-                fslmaths ${subj}_desc-brain_T1w.nii.gz -bin ${subj}_desc-brain_mask.nii.gz
+                fslmaths ${subj}${sessionfile}desc-brain_T1w.nii.gz -bin ${subj}${sessionfile}desc-brain_mask.nii.gz
                 rm brain.mgz aseg.mgz synthSR.mgz
 
-                fslmaths ${subj}_desc-aseg_dseg.nii.gz -mul 0 temp.nii.gz
+                fslmaths ${subj}${sessionfile}desc-aseg_dseg.nii.gz -mul 0 temp.nii.gz
                 for int in 2 41 192 250 251 252 253 254 255; do
 
-                    fslmaths ${subj}_desc-aseg_dseg.nii.gz \
+                    fslmaths ${subj}${sessionfile}desc-aseg_dseg.nii.gz \
                         -thr ${int} -uthr ${int} -bin ${int}.nii.gz
 
                     fslmaths temp.nii.gz -add ${int}.nii.gz temp.nii.gz
                     rm ${int}.nii.gz
                 done
-                mv temp.nii.gz ${subj}_desc-wm_probseg.nii.gz
+                mv temp.nii.gz ${subj}${sessionfile}desc-wm_probseg.nii.gz
 
                 # check overay
-                slicer ${subj}_desc-brain_T1w.nii.gz ${subj}_desc-brain_T1w.nii.gz \
+                slicer ${subj}${sessionfile}desc-brain_T1w.nii.gz ${subj}${sessionfile}desc-brain_T1w.nii.gz \
                     -a ${workdir}/${subj}/figures/${subj}_BETQC.png
             fi
 
@@ -227,7 +227,7 @@ echo
 
                 # ants better?
 
-                flirt -in ${workdir}/${subj}/anat/${subj}_desc-brain_T1w.nii.gz \
+                flirt -in ${workdir}/${subj}/anat/${subj}${sessionfile}desc-brain_T1w.nii.gz \
                     -ref ${workdir}/${subj}${sessionpath}dwi/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-nodif_dwi.nii.gz \
                     -omat ${workdir}/${subj}${sessionpath}xfms/T1w-2-diff_acq-${acq}_run-${run}.mat \
                     -searchrx -90 90 -searchry -90 90 -searchrz -90 90 \
@@ -237,9 +237,9 @@ echo
                     -inverse ${workdir}/${subj}${sessionpath}xfms/T1w-2-diff_acq-${acq}_run-${run}.mat
 
                 epi_reg --epi=${workdir}/${subj}${sessionpath}dwi/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-nodif_dwi.nii.gz \
-                    --t1=${workdir}/${subj}/anat/${subj}_desc-preproc_T1w.nii.gz \
-                    --t1brain=${workdir}/${subj}/anat/${subj}_desc-brain_T1w.nii.gz \
-                    --wmseg=${workdir}/${subj}/anat/${subj}_desc-wm_probseg.nii.gz \
+                    --t1=${workdir}/${subj}/anat/${subj}${sessionfile}desc-preproc_T1w.nii.gz \
+                    --t1brain=${workdir}/${subj}/anat/${subj}${sessionfile}desc-brain_T1w.nii.gz \
+                    --wmseg=${workdir}/${subj}/anat/${subj}${sessionfile}desc-wm_probseg.nii.gz \
                     --out=${workdir}/${subj}${sessionpath}xfms/${subj}${sessionfile}acq-${acq}_run-${run}_epireg
 
                 convert_xfm -omat ${workdir}/${subj}${sessionpath}xfms/${subj}${sessionfile}acq-${acq}_run-${run}_epireg_inversed.mat \
