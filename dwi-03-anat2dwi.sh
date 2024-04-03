@@ -103,12 +103,13 @@ if [[ ! -d ${freesurferdir}${sessionpath}${subj}/mri ]]; then
     exit
 fi
 
-rsync -az --ignore-existing ${freesurferdir}${sessionpath}${subj} ${workdir}/${subj}/freesurfer/
-export SUBJECTS_DIR=${workdir}/${subj}/freesurfer
+mkdir -p ${workdir}/${subj}${sessionpath}
+rsync -az --ignore-existing ${freesurferdir}${sessionpath}${subj} ${workdir}/${subj}${sessionpath}freesurfer/
+export SUBJECTS_DIR=${workdir}/${subj}${sessionpath}freesurfer
 mkdir -p ${SUBJECTS_DIR}/${subj}/dwi
 echo
 echo -e "${BLUE}Warp atlases to FreeSurfer output${NC}"
-sbatch --wait ${scriptdir}/atlas2FreeSurfer.sh ${SUBJECTS_DIR} ${subj}
+sbatch --wait ${scriptdir}/atlas2FreeSurfer.sh ${SUBJECTS_DIR}/ ${subj}
 echo
 echo -e "${BLUE}continue with anat to dwi registration${NC}"
 echo
@@ -369,8 +370,8 @@ echo
 done
 
 # clean up
-chmod -R u+w ${workdir}/${subj}/freesurfer/fsaverage
-#rm -rf ${workdir}/${subj}
+chmod -R u+w ${workdir}/${subj}${sessionpath}freesurfer/fsaverage
+#rm -rf ${workdir}/${subj}${sessionpath}
 
 echo "-----------------------------------"
 echo "finished anat2dwi subject = ${subj}"
