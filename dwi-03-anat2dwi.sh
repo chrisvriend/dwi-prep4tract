@@ -363,7 +363,7 @@ echo
             # transfer files
             rsync -av ${workdir}/${subj}${sessionpath}anat/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_atlas* \
                 ${outputdir}/dwi-preproc/${subj}${sessionpath}anat/
-            rsync -av --ignore-existing ${SUBJECTS_DIR}/${subj} ${freesurferdir}
+            rsync -av --ignore-existing ${SUBJECTS_DIR}/${subj} ${freesurferdir}${sessionpath}
 
         done
     done
