@@ -9,7 +9,7 @@
 #SBATCH --qos=anw-cpu
 #SBATCH --output eddy_%A.log
 
-module load fsl/6.0.5.1
+module load fsl/6.0.6.5
 
 # inputs
 DWImain=${1}

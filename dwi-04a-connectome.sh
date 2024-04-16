@@ -114,9 +114,8 @@ for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
       # check if output already available #
       if [ -f ${outputdir}/dwi-connectome/${subj}${sessionpath}dwi/${subj}${sessionfile}acq-${acq}_run-${run}_tissue-WM-norm_fod.nii.gz ] &&
         [ -f ${outputdir}/dwi-connectome/${subj}${sessionpath}dwi/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_tracto-${nstreamlines}_desc-sift_weights.txt ] &&
-        [ -f ${outputdir}/dwi-connectome/${subj}${sessionpath}dwi/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_tracto-${nstreamlines}.tck ] &&
-        (($(ls ${outputdir}/dwi-connectome/${subj}${sessionpath}conn/${subj}${sessionfile}acq-${acq}_run-${run}_atlas-*_desc-*_connmatrix.csv 2>/dev/null | wc -l) > 0)); then
-        echo -e "${GREEN}${subj}${sessionfile} already has tractogram, sift and >1 conn matrix${NC}"
+        [ -f ${outputdir}/dwi-connectome/${subj}${sessionpath}dwi/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_tracto-${nstreamlines}.tck ]; then
+        echo -e "${GREEN}${subj}${sessionfile} already has tractogram and sift${NC}"
         echo -e "...skip...${NC}"
         echo
         continue
