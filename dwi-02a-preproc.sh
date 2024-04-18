@@ -338,6 +338,7 @@ for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
     ###################
     ### round bvals ###
     ###################
+    cd ${workdir}/${subj}${sessionpath}dwi
     ${scriptdir}/round_bvals.py ${sessiondir}/dwi/${subj}${sessionfile}dwi.bval
 
     #######################
@@ -388,6 +389,8 @@ for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
     cp eddy_*.log ${outputdir}/dwi-preproc/${subj}${sessionpath}logs/${subj}${sessionfile}eddy.log
 
     # rename output
+    cd ${workdir}/${subj}${sessionpath}dwi
+
     mv ${subj}${sessionfile}space-dwi_desc-preproc.eddy_rotated_bvecs \
         ${subj}${sessionfile}space-dwi_desc-preproc_dwi.bvec
     mv ${subj}${sessionfile}space-dwi_desc-preproc.nii.gz \
