@@ -257,3 +257,12 @@ sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" *tck2conn*.log > ${outputdi
 # pending 
 
 #rm ${bidsdir}/${subj}/*.log
+
+
+
+###########################
+##       clean-up        ##
+###########################
+
+sbatch --wait ${scriptdir}/dwi-05-cleanup.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -s ${subj} -n ${nstreamlines}
+sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" *cleanup*.log > ${outputdir}/dwi-connectome/${subj}/logs/${subj}_dwi-cleanup.log
