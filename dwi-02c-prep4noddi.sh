@@ -91,7 +91,7 @@ if [[ -f ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}
 && -f ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-ndi_noddi.nii.gz \
 && -f ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-odi_noddi.nii.gz ]]; then 
         echo -e "${GREEN}${subj}${sessionfile} already has NODDI output${NC}"
-exit
+continue
 fi
 
         echo
