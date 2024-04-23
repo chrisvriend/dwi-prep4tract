@@ -63,7 +63,7 @@ while getopts ":i:o:f:w:s:c:" opt; do
 done
 
 #scriptdir=/data/anw/anw-gold/NP/projects/data_chris/Tmult/scripts
-synthstrippath=/data/anw/anw-gold/NP/doorgeefluik/container_apps/synthstrip.1.2.sif
+synthstrippath=/scratch/anw/share-np/fmridenoiser/synthstrip.1.2.sif
 atlasdir=/data/anw/anw-gold/NP/doorgeefluik/atlas4FreeSurfer
 threads=8
 
