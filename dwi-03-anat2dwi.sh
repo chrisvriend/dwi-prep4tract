@@ -5,7 +5,7 @@
 #SBATCH --partition=luna-cpu-short
 #SBATCH --qos=anw-cpu
 #SBATCH --cpus-per-task=2
-#SBATCH --time=00-02:00:00
+#SBATCH --time=00-04:00:00
 #SBATCH --nice=2000
 #SBATCH --output=anat2dwi_%A.log
 
@@ -63,8 +63,8 @@ while getopts ":i:o:f:w:s:c:" opt; do
 done
 
 #scriptdir=/data/anw/anw-gold/NP/projects/data_chris/Tmult/scripts
-synthstrippath=/scratch/anw/share-np/fmridenoiser/synthstrip.1.2.sif
-atlasdir=/data/anw/anw-gold/NP/doorgeefluik/atlas4FreeSurfer
+synthstrippath=/scratch/anw/share/MULTINET/tools/synthstrip.1.2.sif
+atlasdir=/scratch/anw/share/MULTINET/tools/atlas4FreeSurfer/atlases
 threads=2
 
 ###############################################################################
@@ -96,16 +96,18 @@ for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
     fi
 
 
-if [[ ! -d ${freesurferdir}${sessionpath}${subj}/mri ]]; then
+if [[ ! -f ${freesurferdir}${sessionpath}${subj}.tar ]]; then
     echo -e "${RED}FreeSurfer output not available${NC}"
     echo -e "${RED}processing stopped for ${subj}${NC}"
     sleep 1
     exit
 fi
 
-mkdir -p ${workdir}/${subj}${sessionpath}
-rsync -az --ignore-existing ${freesurferdir}${sessionpath}${subj} ${workdir}/${subj}${sessionpath}freesurfer/
+mkdir -p "${workdir}/${subj}${sessionpath}freesurfer"
+rsync -av --ignore-existing ${freesurferdir}${sessionpath}${subj}.tar ${workdir}/${subj}${sessionpath}freesurfer/
 export SUBJECTS_DIR=${workdir}/${subj}${sessionpath}freesurfer
+cd ${SUBJECTS_DIR}
+tar -xf ${subj}.tar
 mkdir -p ${SUBJECTS_DIR}/${subj}/dwi
 echo
 echo -e "${BLUE}Warp atlases to FreeSurfer output${NC}"
@@ -159,9 +161,9 @@ echo
 
                 # l because they are symbolic links
                 rsync -av \
-                    ${freesurferdir}/${subj}/mri/brain.mgz \
-                    ${freesurferdir}/${subj}/mri/aseg.mgz \
-                    ${freesurferdir}/${subj}/mri/synthSR.mgz \
+                    ${SUBJECTS_DIR}/${subj}/mri/brain.mgz \
+                    ${SUBJECTS_DIR}/${subj}/mri/aseg.mgz \
+                    ${SUBJECTS_DIR}/${subj}/mri/synthSR.mgz \
                     ${workdir}/${subj}/anat/
 
                 cd ${workdir}/${subj}/anat
@@ -199,6 +201,7 @@ echo
 
             rsync -a ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc* \
                 ${workdir}/${subj}${sessionpath}dwi
+            mkdir -p ${outputdir}/dwi-preproc/${subj}/anat
             rsync -a --ignore-existing ${outputdir}/dwi-preproc/${subj}/anat/* ${workdir}/${subj}/anat
 
             if [ -d ${outputdir}/dwi-preproc/${subj}${sessionpath}xfms ]; then
@@ -363,7 +366,15 @@ echo
             # transfer files
             rsync -av ${workdir}/${subj}${sessionpath}anat/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_atlas* \
                 ${outputdir}/dwi-preproc/${subj}${sessionpath}anat/
-            rsync -av --ignore-existing ${SUBJECTS_DIR}/${subj} ${freesurferdir}${sessionpath}
+            rsync -av  ${workdir}/${subj}/anat/*  ${outputdir}/dwi-preproc/${subj}/anat
+            cd ${SUBJECTS_DIR}
+            rm ${subj}.tar 
+            tar -cf ${subj}.tar ${subj}
+            if [ -f ${subj}.tar ]; then
+            rm -r ${subj}
+            fi
+            rsync -av ${SUBJECTS_DIR}/${subj}.tar ${freesurferdir}${sessionpath}
+            
 
         done
     done
@@ -371,7 +382,7 @@ done
 
 # clean up
 chmod -R u+w ${workdir}/${subj}${sessionpath}freesurfer/fsaverage
-#rm -rf ${workdir}/${subj}${sessionpath}
+rm -rf ${workdir}/${subj}${sessionpath}freesurfer
 
 echo "-----------------------------------"
 echo "finished anat2dwi subject = ${subj}"
