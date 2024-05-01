@@ -366,7 +366,8 @@ echo
             # transfer files
             rsync -av ${workdir}/${subj}${sessionpath}anat/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_atlas* \
                 ${outputdir}/dwi-preproc/${subj}${sessionpath}anat/
-            rsync -av  ${workdir}/${subj}/anat/*  ${outputdir}/dwi-preproc/${subj}/anat
+            rsync -av  ${workdir}/${subj}/anat/${subj}${sessionfile}*  ${outputdir}/dwi-preproc/${subj}/anat
+            rm ${workdir}/${subj}/anat/${subj}${sessionfile}*
             cd ${SUBJECTS_DIR}
             rm ${subj}.tar 
             tar -cf ${subj}.tar ${subj}
