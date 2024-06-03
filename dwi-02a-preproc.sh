@@ -304,8 +304,8 @@ for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
         ${subj}${sessionfile}acq-APPA_desc-refparams.tsv \
         ${outputdir}/dwi-preproc/${subj}${sessionpath}fmap
 
-    if [ ! -f ${subj}${sessionfile}space-dwi_desc-unwarped_epi.nii.gz ] ||
-        [ ! -f ${subj}${sessionfile}space-dwi_desc-topup_fieldcoeff.nii.gz ]; then
+    if [ ! -f ${workdir}/${subj}${sessionpath}fmap/${subj}${sessionfile}space-dwi_desc-unwarped_epi.nii.gz ] ||
+        [ ! -f ${workdir}/${subj}${sessionpath}fmap/${subj}${sessionfile}space-dwi_desc-topup_fieldcoeff.nii.gz ]; then
 
         #    https://www.jiscmail.ac.uk/cgi-bin/webadmin?A2=FSL;6c4c9591.2002
         #        b02b0_4.cnf  -- Recommended when the data matrix is an integer multiple of 4 in all direction
@@ -345,7 +345,7 @@ for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
     ## create brain mask ##
     #######################
     # mean of unwarped image to allow registration
-    mrmath ${subj}${sessionfile}space-dwi_desc-unwarped_epi.nii.gz mean \
+    mrmath ${workdir}/${subj}${sessionpath}fmap/${subj}${sessionfile}space-dwi_desc-unwarped_epi.nii.gz mean \
         ${subj}${sessionfile}space-dwi_desc-nodif_epi.nii.gz -axis 3
 
     # Get the mean b-zero (un-corrected)
