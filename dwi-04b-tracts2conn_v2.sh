@@ -3,7 +3,7 @@
 #SBATCH --job-name=tck2conn
 #SBATCH --mem=2G
 #SBATCH --partition=luna-cpu-short
-#SBATCH --qos=anw-cpu-big
+#SBATCH --qos=anw-cpu
 #SBATCH --cpus-per-task=2
 #SBATCH --time=00-00:45:00
 #SBATCH --nice=2000
@@ -67,6 +67,7 @@ done
 # source software
 module load fsl/6.0.6.5
 module load Anaconda3/2022.05
+module load ANTs/2.5.0
 conda activate /scratch/anw/share/python-env/mrtrix
 
 for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
@@ -92,20 +93,58 @@ for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
     # CHECK FILES
     ##############
     files=$(echo "
-	${workdir}/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_tracto-${nstreamlines}.tck
-	${workdir}/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_tracto-${nstreamlines}_desc-sift_weights.txt
-	${workdir}/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-preproc-biascor_dwi.mif")
+	${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_tracto-${nstreamlines}.tck
+	${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_tracto-${nstreamlines}_desc-sift_weights.txt")
+
     for file in ${files}; do
 
-        if [ ! -f ${file} ]; then
-            echo -e "${RED}!!!ERROR!!!${NC}"
-            echo -e "${RED}a scan was not found in the workdir ${NC}"
+        if [ ! -f ${workdir}/${file} ]; then
+            echo -e "${YELLOW}!!!WARNING!!!${NC}"
+            echo -e "${YELLOW}a file was not found in the workdir ${NC}"
             echo -e "${file}"
-            echo -e "cannot continue without this file"
-            exit
+            echo -e "cannot continue without this file; checking outputdir"
+            if [ -f ${outputdir}/dwi-connectome/${file} ]; then
+                echo -e "${GREEN}found in output dir; transferring${NC}"
+                mkdir -p ${workdir}/${subj}${sessionpath}dwi/
+                rsync -a ${outputdir}/dwi-connectome/${file} ${workdir}/${file}
+            else
+                echo -e "${RED}!!!ERROR!!!${NC}"
+                echo -e "${RED}a file was not found in the workdir ${NC}"
+                echo -e "cannot continue without this file"
+                exit
+
+            fi
         fi
 
     done
+
+    cd ${workdir}/${subj}${sessionpath}dwi
+
+    if [ ! -f ${subj}${sessionfile}space-dwi_desc-preproc-biascor_dwi.mif ]; then
+
+        echo -e "${YELLOW}!!!WARNING!!!${NC}"
+        echo -e "${YELLOW}could not find biascor mif file in workdir; trying to transfer from outputdir ${NC}"
+
+        rsync -a ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-preproc_dwi.* \
+        ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-brain_mask.nii.gz \
+            ${workdir}/${subj}${sessionpath}dwi/
+
+        mrconvert ${subj}${sessionfile}space-dwi_desc-preproc_dwi.nii.gz \
+            -fslgrad ${subj}${sessionfile}space-dwi_desc-preproc_dwi.bvec \
+            ${subj}${sessionfile}space-dwi_desc-preproc_dwi.bval \
+            ${subj}${sessionfile}space-dwi_desc-preproc_dwi.mif
+
+        rm ${subj}${sessionfile}space-dwi_desc-preproc_dwi.nii.gz ${subj}${sessionfile}space-dwi_desc-preproc_dwi.bv*
+
+        dwibiascorrect ants ${subj}${sessionfile}space-dwi_desc-preproc_dwi.mif \
+            ${subj}${sessionfile}space-dwi_desc-preproc-biascor_dwi.mif -nthreads ${threads} \
+            -bias ${subj}${sessionfile}space-dwi_desc-biasest_dwi.mif \
+            -scratch ${workdir}/${subj}/tempbiascorrect -force
+
+        rm ${subj}${sessionfile}space-dwi_desc-preproc_dwi.mif ${subj}${sessionfile}space-dwi_desc-biasest_dwi.mif
+        rm -rf ${workdir}/${subj}/tempbiascorrect
+
+    fi
 
     if [ -f ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-odi_noddi.nii.gz ]; then
         echo -e "${YELLOW}found noddi output in output directory"
