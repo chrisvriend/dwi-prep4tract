@@ -302,20 +302,6 @@ fi
     # warp atlases to dwi space
     for atlas in BNA 300P7N 300P17N 400P7N 400P17N aparc500; do
 
-        if [ ! -f ${SUBJECTS_DIR}/${subj}/mri/${atlas}+aseg.mgz ]; then
-            echo
-            echo -e "${YELLOW}WARNING! atlas: ${atlas} - not available in FreeSurfer directory of ${subj}${NC}"
-            continue
-        else
-
-            if [ ! -f ${workdir}/${subj}${sessionpath}anat/${subj}${sessionfile}space-dwi_atlas-${atlas}_dseg.nii.gz ]; then
-
-                # register atlas to DWI
-                mri_vol2vol --mov ${workdir}/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-nodif_dwi.nii.gz \
-                    --targ ${SUBJECTS_DIR}/${subj}/mri/${atlas}+aseg.mgz \
-                    --o ${workdir}/${subj}${sessionpath}anat/${subj}${sessionfile}space-dwi_atlas-${atlas}_temp.nii.gz \
-                    --reg ${SUBJECTS_DIR}/${subj}/dwi/${subj}${sessionfile}register.dat --inv --no-save-reg --interp nearest
-
                 if [[ ${atlas} == "300P7N" ]]; then
                     ID="Schaefer_300P7N"
                 elif [[ ${atlas} == "300P17N" ]]; then
@@ -338,6 +324,21 @@ fi
                     echo "atlas not found!"
                     exit
                 fi
+
+        if [ ! -f ${SUBJECTS_DIR}/${subj}/mri/${atlas}+aseg.mgz ]; then
+            echo
+            echo -e "${YELLOW}WARNING! atlas: ${atlas} - not available in FreeSurfer directory of ${subj}${NC}"
+            continue
+        else
+
+            if [ ! -f ${workdir}/${subj}${sessionpath}anat/${subj}${sessionfile}space-dwi_atlas-${atlas}_dseg.nii.gz ]; then
+
+                # register atlas to DWI
+                mri_vol2vol --mov ${workdir}/${subj}${sessionpath}dwi/${subj}${sessionfile}space-dwi_desc-nodif_dwi.nii.gz \
+                    --targ ${SUBJECTS_DIR}/${subj}/mri/${atlas}+aseg.mgz \
+                    --o ${workdir}/${subj}${sessionpath}anat/${subj}${sessionfile}space-dwi_atlas-${atlas}_temp.nii.gz \
+                    --reg ${SUBJECTS_DIR}/${subj}/dwi/${subj}${sessionfile}register.dat --inv --no-save-reg --interp nearest
+
 
                 if [[ ${ID} != *"Schaefer"* ]]; then
                     # convert and sort labels
