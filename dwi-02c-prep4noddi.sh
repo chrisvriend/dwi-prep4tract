@@ -133,7 +133,8 @@ fi
         ${scriptdir}/round_bvals.py ${workdir}/${subj}${sessionpath}noddi/${subj}${sessionID}/bvals
 
         sbatch --wait --gres=gpu:1g.10gb:1 ${scriptdir}/dwi-02d-noddi.sh ${subj}${sessionID}
-
+        mv gpu*.log ${scriptdir}/${subj}
+        
         if [ -f ${subj}${sessionID}.NODDI_Watson/mean_fiso.nii.gz ]; then
             # rename and move output from NODDI
 
