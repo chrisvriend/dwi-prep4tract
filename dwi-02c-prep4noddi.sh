@@ -129,6 +129,9 @@ fi
             ${workdir}/${subj}${sessionpath}noddi/${subj}${sessionID}/bvals
 
         cd ${workdir}/${subj}${sessionpath}noddi
+        chmod -R ug+w ${workdir}/${subj}${sessionpath}noddi
+        ${scriptdir}/round_bvals.py ${workdir}/${subj}${sessionpath}noddi/${subj}${sessionID}/bvals
+
         sbatch --wait --gres=gpu:1g.10gb:1 ${scriptdir}/dwi-02d-noddi.sh ${subj}${sessionID}
 
         if [ -f ${subj}${sessionID}.NODDI_Watson/mean_fiso.nii.gz ]; then
