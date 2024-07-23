@@ -5,7 +5,7 @@
 #SBATCH --partition=luna-cpu-short
 #SBATCH --qos=anw-cpu
 #SBATCH --cpus-per-task=4
-#SBATCH --time=00-01:00:00
+#SBATCH --time=00-04:00:00
 #SBATCH --nice=2000
 #SBATCH --output=dwi-tck2conn_%A.log
 
@@ -67,6 +67,7 @@ done
 # source software
 module load fsl/6.0.6.5
 module load Anaconda3/2022.05
+module load ANTs
 conda activate /scratch/anw/share/python-env/mrtrix
 
 for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
@@ -102,21 +103,72 @@ for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
             ##############
             # CHECK FILES
             ##############
-            files=$(echo "
-	${workdir}/${subj}${sessionpath}dwi/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_tracto-${nstreamlines}.tck
-	${workdir}/${subj}${sessionpath}dwi/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_tracto-${nstreamlines}_desc-sift_weights.txt
-	${workdir}/${subj}${sessionpath}dwi/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-preproc-biascor_dwi.mif")
+ 	
+		# little dangerous
+        #    if (($(ls ${outputdir}/dwi-connectome/${subj}${sessionpath}conn/${subj}${sessionfile}acq-${acq}_run-${run}_atlas-*_desc-*_connmatrix.csv 2>/dev/null | wc -l) > 0)); then
+        #            echo -e "${GREEN}conn matrices already found in outputdir${NC}"
+#		continue
+
+#	    fi
+    cd ${workdir}/${subj}${sessionpath}dwi
+
+   if [ ! -f ${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-preproc-biascor_dwi.mif ]; then
+
+        echo -e "${YELLOW}!!!WARNING!!!${NC}"
+        echo -e "${YELLOW}could not find biascor mif file in workdir; trying to transfer from outputdir ${NC}"
+
+        rsync -a ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-preproc_dwi.* \
+        ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-brain_mask.nii.gz \
+            ${workdir}/${subj}${sessionpath}dwi/
+
+        mrconvert ${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-preproc_dwi.nii.gz \
+            -fslgrad ${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-preproc_dwi.bvec \
+            ${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-preproc_dwi.bval \
+            ${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-preproc_dwi.mif
+
+        rm ${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-preproc_dwi.nii.gz ${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-preproc_dwi.bv*
+
+        dwibiascorrect ants ${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-preproc_dwi.mif \
+            ${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-preproc-biascor_dwi.mif -nthreads ${threads} \
+            -bias ${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-biasest_dwi.mif \
+            -scratch ${workdir}/${subj}/tempbiascorrect -force
+
+        rm ${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-preproc_dwi.mif ${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-biasest_dwi.mif
+        rm -rf ${workdir}/${subj}/tempbiascorrect
+
+    fi
+
+
+
+            files=$(echo "${subj}${sessionpath}dwi/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_tracto-${nstreamlines}.tck ${subj}${sessionpath}dwi/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_tracto-${nstreamlines}_desc-sift_weights.txt ${subj}${sessionpath}dwi/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-preproc-biascor_dwi.mif")
+
+	    unset break_outer_loop
             for file in ${files}; do
 
-                if [ ! -f ${file} ]; then
+                if [ ! -f ${workdir}/${file} ]; then
+
+
+		if [ -f ${outputdir}/dwi-connectome/${file} ]; then
+
+		rsync -av ${outputdir}/dwi-connectome/${file} ${workdir}/${subj}${sessionpath}dwi/
+
+		else
+
                     echo -e "${RED}!!!ERROR!!!${NC}"
-                    echo -e "${RED}a scan was not found in the workdir ${NC}"
+                    echo -e "${RED}a scan was not found in the workdir or outputdir ${NC}"
                     echo -e "${file}"
                     echo -e "cannot continue without this file"
-                    exit
+                    break_outer_loop=true
+	            break  # Break out of the inner loop
                 fi
-
+		fi
             done
+
+	 if [ "$break_outer_loop" = true ]; then
+        break  # Break out of the outer loop
+         
+	fi
+
 
             if [ -f ${outputdir}/dwi-preproc/${subj}${sessionpath}dwi/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_desc-odi_noddi.nii.gz ]; then
                 echo -e "${YELLOW}found noddi output in output directory"
@@ -185,7 +237,7 @@ for dwidir in ${bidsdir}/${subj}/{,ses*/}dwi; do
 
             done
 
-            for atlas in BNA 300P7N 300P17N 400P7N 400P17N aparc500; do
+            for atlas in BNA_tumor; do
                 if [ ! -f ${workdir}/${subj}${sessionpath}anat/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_atlas-${atlas}_dseg.nii.gz ]; then
                     echo -e "${YELLOW}!!WARNING!!${atlas} atlas not available${NC}"
                     echo

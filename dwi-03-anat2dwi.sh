@@ -100,7 +100,7 @@ if [[ ! -f ${freesurferdir}${sessionpath}${subj}.tar ]]; then
     echo -e "${RED}FreeSurfer output not available${NC}"
     echo -e "${RED}processing stopped for ${subj}${NC}"
     sleep 1
-    exit
+    continue
 fi
 
 mkdir -p "${workdir}/${subj}${sessionpath}freesurfer"
@@ -137,12 +137,12 @@ echo
             fi
 
             # check if output already available #
-            if (($(ls ${outputdir}/dwi-preproc/${subj}${sessionpath}anat/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_atlas-*_dseg.nii.gz 2>/dev/null | wc -l) > 0)); then
-                echo -e "${GREEN}${subj}${sessionfile} already has atlasses in dwi-space${NC}"
-                echo -e "...skip...${NC}"
-                echo
-                continue
-            fi
+      #      if (($(ls ${outputdir}/dwi-preproc/${subj}${sessionpath}anat/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_atlas-*_dseg.nii.gz 2>/dev/null | wc -l) > 0)); then
+       #         echo -e "${GREEN}${subj}${sessionfile} already has atlases in dwi-space${NC}"
+       #         echo -e "...skip...${NC}"
+       #         echo
+       #         continue
+       #     fi
             ##---------------------------------##
             mkdir -p "${workdir}/${subj}${sessionpath}dwi"
             mkdir -p "${workdir}/${subj}${sessionpath}anat"
@@ -155,15 +155,20 @@ echo
 
             # assumes that there is only ONE!! FreeSurfer output per subject
 
-            # using T1 from Freesurfer directory
-            if [ ! -f ${workdir}/${subj}/anat/${subj}${sessionfile}desc-preproc_T1w.nii.gz ] ||
-                [ ! -f ${workdir}/${subj}/anat/${subj}${sessionfile}desc-brain_T1w.nii.gz ]; then
+           
 
-                # l because they are symbolic links
+            # using T1 and other maps from Freesurfer directory
+            if [ ! -f ${workdir}/${subj}/anat/${subj}${sessionfile}desc-preproc_T1w.nii.gz ] ||
+                [ ! -f ${workdir}/${subj}/anat/${subj}${sessionfile}desc-brain_T1w.nii.gz ] || 
+                [ ! -f ${subj}${sessionfile}space-freesurfer_atlas-BNA_dseg.nii.gz ] ||
+                [ ! -f ${subj}${sessionfile}space-freesurfer_atlas-BNA_desc-tumorseed_dseg.nii.gz ]; then
+
                 rsync -av \
                     ${SUBJECTS_DIR}/${subj}/mri/brain.mgz \
                     ${SUBJECTS_DIR}/${subj}/mri/aseg.mgz \
                     ${SUBJECTS_DIR}/${subj}/mri/synthSR.mgz \
+                    ${SUBJECTS_DIR}/${subj}/mri/wm.mgz \
+                    ${SUBJECTS_DIR}/${subj}/mri/BNA+aseg.mgz \
                     ${workdir}/${subj}/anat/
 
                 cd ${workdir}/${subj}/anat
@@ -174,10 +179,78 @@ echo
                     --out_orientation RAS synthSR.mgz ${subj}${sessionfile}desc-preproc_T1w.nii.gz
                 mri_convert --in_type mgz --out_type nii \
                     --out_orientation RAS aseg.mgz ${subj}${sessionfile}desc-aseg_dseg.nii.gz
+                mri_convert --in_type mgz --out_type nii \
+                    --out_orientation RAS wm.mgz ${subj}${sessionfile}desc-wm_dseg.nii.gz
+                mri_convert --in_type mgz --out_type nii \
+                    --out_orientation RAS BNA+aseg.mgz ${subj}${sessionfile}space-freesurfer_atlas-BNA_dseg.nii.gz
+
+                # only include wm (not csf)
+                fslmaths ${subj}${sessionfile}desc-wm_dseg.nii.gz -thr 110 -uthr 110 -bin \
+                ${subj}${sessionfile}desc-wm_dseg.nii.gz 
+
+                # extract dimensions
+                dim1=$(fslval ${subj}${sessionfile}desc-preproc_T1w.nii.gz dim1)
+                dim2=$(fslval ${subj}${sessionfile}desc-preproc_T1w.nii.gz dim2)
+                dim3=$(fslval ${subj}${sessionfile}desc-preproc_T1w.nii.gz dim3)
+
+                echo -e "${BLUE} T1w dimensions are ${dim1} x ${dim2} x ${dim3} "
+
+
+                # define tumormask
+                tumormask=${bidsdir}/${subj}${sessionpath}anat/${subj}${sessionfile}space-highrescegadoT1w_dseg.nii.gz
+
+                if [ ! -f ${tumormask} ]; then 
+
+                echo -e "${YELLOW}WARNING!! No tumor mask found in bids directory${NC}"
+        
+
+                else 
+
+                if [ ! -f ${SUBJECTS_DIR}/${subj}/mri/BNA_tumor+aseg.mgz ]; then 
+                echo -e "${BLUE}mask BNA atlas with tumor mask${NC}"
+
+                # conform tumormask to FreeSurfer space
+                mri_convert ${tumormask} \
+                ${subj}${sessionfile}space-freesurfer_desc-tumor_mask.nii.gz --conform -oni ${dim1} -onj  ${dim2} -onk ${dim3} --out_orientation RAS
+                fslmaths ${subj}${sessionfile}space-freesurfer_desc-tumor_mask.nii.gz -bin ${subj}${sessionfile}space-freesurfer_desc-tumor_mask.nii.gz
+
+                #assume the center point of T1w image without affecting the dimensions
+                fslcpgeom ${subj}${sessionfile}desc-preproc_T1w.nii.gz ${subj}${sessionfile}space-freesurfer_desc-tumor_mask.nii.gz -d
+
+
+                # then dilate tumor mask
+                fslmaths ${subj}${sessionfile}space-freesurfer_desc-tumor_mask.nii.gz -dilM \
+                ${subj}${sessionfile}space-freesurfer_rec-dilM_desc-tumor_mask.nii.gz
+                fslmaths  ${subj}${sessionfile}space-freesurfer_desc-tumor_mask.nii.gz -mul -1 -add 1 \
+                ${subj}${sessionfile}space-freesurfer_rec-inv_desc-tumor_mask.nii.gz
+                fslmaths  ${subj}${sessionfile}space-freesurfer_rec-inv_desc-tumor_mask.nii.gz -mul \
+                ${subj}${sessionfile}space-freesurfer_rec-dilM_desc-tumor_mask.nii.gz ${subj}${sessionfile}space-freesurfer_rec-rim_desc-tumor_mask.nii.gz 
+                fslmaths ${subj}${sessionfile}desc-wm_dseg.nii.gz -mul ${subj}${sessionfile}space-freesurfer_rec-rim_desc-tumor_mask.nii.gz \
+                ${subj}${sessionfile}space-freesurfer_rec-rimwm_desc-tumor_mask.nii.gz 
+                fslmaths ${subj}${sessionfile}space-freesurfer_rec-rimwm_desc-tumor_mask.nii.gz  -mul 3000 ${subj}${sessionfile}space-freesurfer_rec-rimwm_mod-3000_desc-tumor_mask.nii.gz 
+                fslmaths ${subj}${sessionfile}space-freesurfer_rec-rimwm_desc-tumor_mask.nii.gz -mul -1 -add 1  ${subj}${sessionfile}space-freesurfer_rec-invrimwm_desc-tumor_mask.nii.gz 
+
+                # only for BNA for now
+                fslmaths ${subj}${sessionfile}space-freesurfer_atlas-BNA_dseg.nii.gz -mul ${subj}${sessionfile}space-freesurfer_rec-invrimwm_desc-tumor_mask.nii.gz \
+                 ${subj}${sessionfile}space-freesurfer_atlas-BNA_desc-tumorrimzero_dseg.nii.gz 
+                fslmaths ${subj}${sessionfile}space-freesurfer_atlas-BNA_desc-tumorrimzero_dseg.nii.gz -mul \
+                ${subj}${sessionfile}space-freesurfer_rec-inv_desc-tumor_mask.nii.gz \
+                  ${subj}${sessionfile}space-freesurfer_atlas-BNA_desc-rimmintumor_dseg.nii.gz 
+                fslmaths ${subj}${sessionfile}space-freesurfer_atlas-BNA_desc-rimmintumor_dseg.nii.gz -add \
+                ${subj}${sessionfile}space-freesurfer_rec-rimwm_mod-3000_desc-tumor_mask.nii.gz \
+                ${subj}${sessionfile}space-freesurfer_atlas-BNA_desc-tumorseed_dseg.nii.gz
+
+                mri_convert ${subj}${sessionfile}space-freesurfer_atlas-BNA_desc-tumorseed_dseg.nii.gz \
+                ${SUBJECTS_DIR}/${subj}/mri/BNA_tumor+aseg.mgz --out_orientation LIA
+                
+
+
+                fi
+
+                fi
 
                 # binarize
                 fslmaths ${subj}${sessionfile}desc-brain_T1w.nii.gz -bin ${subj}${sessionfile}desc-brain_mask.nii.gz
-                rm brain.mgz aseg.mgz synthSR.mgz
 
                 fslmaths ${subj}${sessionfile}desc-aseg_dseg.nii.gz -mul 0 temp.nii.gz
                 for int in 2 41 192 250 251 252 253 254 255; do
@@ -193,7 +266,11 @@ echo
                 # check overay
                 slicer ${subj}${sessionfile}desc-brain_T1w.nii.gz ${subj}${sessionfile}desc-brain_T1w.nii.gz \
                     -a ${workdir}/${subj}/figures/${subj}_BETQC.png
+# clean up            
+                            rm *.mgz
+
             fi
+
 
             ###########################
             # T1 to DWI registration
@@ -280,7 +357,8 @@ echo
             fi
 
             # warp atlases to dwi space
-            for atlas in BNA 300P7N 300P17N 400P7N 400P17N aparc500; do
+		#for atlas in BNA 300P7N 300P17N 400P7N 400P17N aparc500; do
+            for atlas in BNA_tumor; do
 
                 if [ ! -f ${SUBJECTS_DIR}/${subj}/mri/${atlas}+aseg.mgz ]; then
                     echo
@@ -302,8 +380,8 @@ echo
                         ID="Schaefer_100P7N"
                     elif [[ ${atlas} == "aparc500" ]]; then
                         ID="aparc500_labels"
-                    elif [[ ${atlas} == "BNA" ]]; then
-                        ID="BNA_labels"
+                    elif [[ ${atlas} == "BNA_tumor" ]]; then
+                        ID="BNA_labels_withtumor"
                     elif [[ ${atlas} == "BNA+cerebellum" ]]; then
                         ID="BNA+CER_labels"
                     else
@@ -366,8 +444,10 @@ echo
             # transfer files
             rsync -av ${workdir}/${subj}${sessionpath}anat/${subj}${sessionfile}acq-${acq}_run-${run}_space-dwi_atlas* \
                 ${outputdir}/dwi-preproc/${subj}${sessionpath}anat/
-            rsync -av  ${workdir}/${subj}/anat/${subj}${sessionfile}*  ${outputdir}/dwi-preproc/${subj}/anat
-            rm ${workdir}/${subj}/anat/${subj}${sessionfile}*
+ 	    rsync -av  ${workdir}/${subj}/anat/${subj}${sessionfile}* ${outputdir}/dwi-preproc/${subj}/anat
+        
+        #    rm ${workdir}/${subj}/anat/${subj}${sessionfile}*
+        
             cd ${SUBJECTS_DIR}
             rm ${subj}.tar 
             tar -cf ${subj}.tar ${subj}
