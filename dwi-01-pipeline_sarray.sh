@@ -5,6 +5,7 @@
 # c.vriend@amsterdamumc.nl
 
 # dwi preprocessing and tractography pipeline using slurm arrays to process multiple subjects in parallel (called by dwi-00-launch_sarray.sh )
+# CV - update Jul '25 - implemented slurm 'afterok'
 
 #################
 # tree of outputs
@@ -130,15 +131,6 @@
 # │           ├── sub-[subjID]_[sessionID]_epireg.nii.gz
 # │           └── T1w-2-diff.mat
 
-## SLURM INPUTS ##
-#SBATCH --mem=1G
-#SBATCH --partition=luna-cpu-short
-#SBATCH --qos=anw-cpu
-#SBATCH --cpus-per-task=1
-#SBATCH --time=00-08:00:00
-#SBATCH --nice=2000
-#SBATCH --output=dwipip_%A_%a.log
-###################
 
 # Define color variables
 RED='\033[0;31m'
@@ -146,7 +138,6 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BLUE='\033[34m'
 NC='\033[0m' # No Color
-
 
 # Initialize variables
 nstreamlines=50M
@@ -157,9 +148,7 @@ freesurferdir=""
 subj=""
 noddi=""
 scriptdir=""
-# input variables
 # Parse command line arguments
-
 while getopts ":i:o:f:w:j:n:c:" opt; do
     case $opt in
     i)
@@ -189,64 +178,65 @@ while getopts ":i:o:f:w:j:n:c:" opt; do
     esac
 done
 
-#cd ${bidsdir}
 # SLURM ARRAY INPUTS 
 subj=$(sed -n "${SLURM_ARRAY_TASK_ID}p" ${subjects})
-# random delay
+# Random delay
 duration=$((RANDOM % 40 + 2))
 echo -e "${YELLOW}INITIALIZING...(wait a sec)${NC}"
 echo
 sleep ${duration}
-######################
 
 mkdir -p ${workdir}
+mkdir -p ${scriptdir}/${subj}
+cd ${scriptdir}/${subj}
 
 ###########################
 ##  DWI-PREPROCESSING    ##
 ###########################
-mkdir -p ${scriptdir}/${subj}
-cd ${scriptdir}/${subj}
 echo
 echo -e "${BLUE}Preprocessing ${subj}${NC}"
 echo
-sbatch --wait ${scriptdir}/dwi-02a-preproc.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -s ${subj} -c ${scriptdir}
-# delete color codes from log file and copy to log directory
+job_id_preproc=$(sbatch ${scriptdir}/dwi-02a-preproc.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -s ${subj} -c ${scriptdir} | awk '{print $4}')
+echo "Submitted preprocessing job with ID: $job_id_preproc"
 sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" *preproc_*.log >> ${outputdir}/dwi-preproc/${subj}/logs/${subj}_dwi-preproc.log
 
 ###########################
 ##      DWI - NODDI      ##
 ###########################
 if [[ ${noddi} == 1 ]]; then 
-cd ${scriptdir}/${subj}
-echo
-echo -e "${BLUE}perform NODDI${NC}"
-echo
-sbatch --wait ${scriptdir}/dwi-02c-prep4noddi.sh -w ${workdir} -o ${outputdir} -s ${subj} -c ${scriptdir}
-sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" *noddi_*.log >> ${outputdir}/dwi-preproc/${subj}/logs/${subj}_dwi-noddi.log
+    echo
+    echo -e "${BLUE}Performing NODDI${NC}"
+    echo
+    job_id_noddi=$(sbatch --dependency=afterok:$job_id_preproc ${scriptdir}/dwi-02c-prep4noddi.sh -w ${workdir} -o ${outputdir} -s ${subj} -c ${scriptdir} | awk '{print $4}')
+    echo "Submitted NODDI job with ID: $job_id_noddi"
+    sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" *noddi_*.log >> ${outputdir}/dwi-preproc/${subj}/logs/${subj}_dwi-noddi.log
 fi
 
 ###########################
 ## DWI-2-T1 registration ##
 ###########################
-cd ${scriptdir}/${subj}
 echo
-echo -e "${BLUE}anat-2-dwi registration${NC}"
+echo -e "${BLUE}Anat-2-DWI registration${NC}"
 echo
-sbatch --wait ${scriptdir}/dwi-03-anat2dwi.sh -i ${bidsdir} -o ${outputdir} -f ${freesurferdir} -w ${workdir} -s ${subj} -c ${scriptdir}
+job_id_anat2dwi=$(sbatch --dependency=afterok:${job_id_noddi:-$job_id_preproc} ${scriptdir}/dwi-03-anat2dwi.sh -i ${bidsdir} -o ${outputdir} -f ${freesurferdir} -w ${workdir} -s ${subj} -c ${scriptdir} | awk '{print $4}')
+echo "Submitted Anat-2-DWI registration job with ID: $job_id_anat2dwi"
 sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" *anat2dwi*.log > ${outputdir}/dwi-preproc/${subj}/logs/${subj}_dwi-anat2dwi.log
 
 ###########################
 ##   DWI-TRACTOGRAPHY    ##
 ###########################
-cd ${scriptdir}/${subj}
 echo
-echo -e "${BLUE}dwi fod + tractogram${NC}"
+echo -e "${BLUE}DWI FOD + Tractogram${NC}"
 echo
-sbatch --wait ${scriptdir}/dwi-04a-connectome.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -s ${subj} -c ${scriptdir}
+job_id_fodtck=$(sbatch --dependency=afterok:$job_id_anat2dwi ${scriptdir}/dwi-04a-connectome.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -s ${subj} -c ${scriptdir} | awk '{print $4}')
+echo "Submitted FOD + Tractogram job with ID: $job_id_fodtck"
 sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" *fod+tck*.log > ${outputdir}/dwi-connectome/${subj}/logs/${subj}_dwi-fodtck.log
-echo -e "${BLUE}dwi tract - 2 - connectome${NC}"
-sbatch --wait ${scriptdir}/dwi-04b-tracts2conn_v2.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -s ${subj} -n ${nstreamlines}
+
+echo -e "${BLUE}DWI Tract - 2 - Connectome${NC}"
+job_id_tck2conn=$(sbatch --dependency=afterok:$job_id_fodtck ${scriptdir}/dwi-04b-tracts2conn_v2.sh -i ${bidsdir} -o ${outputdir} -w ${workdir} -s ${subj} -n ${nstreamlines} | awk '{print $4}')
+echo "Submitted Tract-to-Connectome job with ID: $job_id_tck2conn"
 sed -E "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" *tck2conn*.log > ${outputdir}/dwi-connectome/${subj}/logs/${subj}_dwi-tckconn.log
+
 ###########################
 ##   DWI-AUTOTRACT    ##
 ###########################
